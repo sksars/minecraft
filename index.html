@@ -667,7 +667,16 @@ avatarBox(legL,.25,.78,.27,pantsMat,0,-.39,0);avatarBox(legL,.27,.18,.38,shoeMat
 avatarBox(legR,.25,.78,.27,pantsMat,0,-.39,0);avatarBox(legR,.27,.18,.38,shoeMat,0,-.82,-.04);
 avatarBox(armL,.22,.72,.24,shirtMat,0,-.34,0);avatarBox(armL,.24,.2,.25,skinMat,0,-.76,0);
 avatarBox(armR,.22,.72,.24,shirtMat,0,-.34,0);avatarBox(armR,.24,.2,.25,skinMat,0,-.76,0);
-var avatarClock=0,avatarFacing=0;
+/* Blocky pickaxe held in the right hand. Its pivot follows the arm so the
+   tool visibly swings whenever the player breaks a block. */
+var pickaxe=new THREE.Group();armR.add(pickaxe);pickaxe.position.set(0,-.78,-.08);
+var pickHandle=new THREE.Mesh(new THREE.BoxGeometry(.075,.72,.075),new THREE.MeshBasicMaterial({color:0x76502f}));
+pickHandle.position.set(0,.30,0);pickaxe.add(pickHandle);
+var pickHeadMat=new THREE.MeshBasicMaterial({color:0xbfc8d2});
+var pickHead=new THREE.Mesh(new THREE.BoxGeometry(.48,.13,.14),pickHeadMat);pickHead.position.set(0,.64,0);pickaxe.add(pickHead);
+var pickTipL=new THREE.Mesh(new THREE.BoxGeometry(.12,.20,.14),pickHeadMat);pickTipL.position.set(-.22,.55,0);pickaxe.add(pickTipL);
+var pickTipR=new THREE.Mesh(new THREE.BoxGeometry(.12,.20,.14),pickHeadMat);pickTipR.position.set(.22,.55,0);pickaxe.add(pickTipR);
+var avatarClock=0,avatarFacing=0,toolSwing=0;
 function findSpawn(){
   var cx=W/2,cz=D/2;
   for(var r=0;r<30;r++)for(var dx=-r;dx<=r;dx++)for(var dz=-r;dz<=r;dz++){
@@ -1025,6 +1034,7 @@ function act(button){
     blocks[idx(x,y,z)]=sel;rebuildAround(x,z);
   }else{
     if(target.y===0)return;
+    toolSwing=1;
     if(mode==='survival'){inv[target.id]++;renderHotbar()}
     blocks[idx(target.x,target.y,target.z)]=0;rebuildAround(target.x,target.z);
   }
@@ -1104,9 +1114,12 @@ function update(dt){
   avatar.rotation.y=avatarFacing;
   avatarClock+=dt*(moving?10:2.2);
   var swing=moving?Math.sin(avatarClock)*.62:Math.sin(avatarClock)*.025;
+  toolSwing=Math.max(0,toolSwing-dt*3.8);
   legL.rotation.x=swing;legR.rotation.x=-swing;
-  armL.rotation.x=-swing*.75;armR.rotation.x=swing*.75;
-  if(!onGround&&!flying){legL.rotation.x=-.28;legR.rotation.x=.42;armL.rotation.x=-.65;armR.rotation.x=-.65;}
+  armL.rotation.x=-swing*.75;armR.rotation.x=swing*.75-toolSwing*1.35;
+  /* Fast forward-and-down pickaxe strike, then return to idle/walk pose. */
+  if(toolSwing>0)armR.rotation.x=swing*.25- Math.sin((1-toolSwing)*Math.PI)*1.75;
+  if(!onGround&&!flying){legL.rotation.x=-.28;legR.rotation.x=.42;armL.rotation.x=-.65;armR.rotation.x=toolSwing>0?-1.1:-.65;}
   avatar.visible=started;
   var hw=raw(Math.floor(camera.position.x),Math.floor(camera.position.y),Math.floor(camera.position.z))===WATER;
   if(hw!==underwater){underwater=hw;waterEl.hidden=!hw}

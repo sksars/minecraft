@@ -242,6 +242,19 @@ body.touch .only-desktop{display:none}
   </div>
 </div>
 
+
+<div id="adventure-tools" aria-label="Adventure controls">
+  <button id="viewToggle" type="button" class="on">🎥 Third Person: ON</button>
+  <button id="rotateToggle" type="button">🔄 Auto-Rotate: OFF</button>
+  <div class="power-label">SUPERPOWERS</div>
+  <div class="powers">
+    <button id="powerGravity" type="button">🕳️ Gravity</button>
+    <button id="powerLightning" type="button">⚡ Lightning</button>
+    <button id="powerFire" type="button">🔥 Fireball</button>
+    <button id="powerIce" type="button">❄️ Ice Shield</button>
+  </div>
+</div>
+
 <div id="overlay">
   <div class="card" role="dialog" aria-labelledby="mTitle">
     <div class="head">
@@ -993,9 +1006,115 @@ function hurt(n){
   hurtEl.classList.add('on');setTimeout(function(){hurtEl.classList.remove('on')},60);
   if(hp<=0){hp=20;spawn();renderHearts();toast('You fell. Back at spawn.',2200)}
 }
+
+/* ---------- adventure entities, powers, and third-person camera ---------- */
+var thirdPerson=true,autoRotate=false,camDistance=5.2,camHeight=2.25;
+var mobs=[],effects=[],blackHole=null,shieldTime=0,spawnClock=0,dragonClock=0;
+var avatar=new THREE.Group();scene.add(avatar);
+var skinMat=new THREE.MeshBasicMaterial({color:0xe3b28b}),shirtMat=new THREE.MeshBasicMaterial({color:0x3985d4}),pantsMat=new THREE.MeshBasicMaterial({color:0x273a68}),darkMat=new THREE.MeshBasicMaterial({color:0x20232b}),eyeMat=new THREE.MeshBasicMaterial({color:0xffffff}),redMat=new THREE.MeshBasicMaterial({color:0x69c94b});
+function part(parent,mat,x,y,z,w,h,d){var m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);parent.add(m);return m}
+var avatarTorso=part(avatar,shirtMat,0,1.05,0,.62,.78,.34);
+var avatarHead=part(avatar,skinMat,0,1.63,0,.42,.42,.42);
+var avatarArmL=part(avatar,shirtMat,-.43,1.08,0,.22,.68,.24),avatarArmR=part(avatar,shirtMat,.43,1.08,0,.22,.68,.24);
+var avatarLegL=part(avatar,pantsMat,-.17,.42,0,.25,.62,.28),avatarLegR=part(avatar,pantsMat,.17,.42,0,.25,.62,.28);
+part(avatar,eyeMat,-.1,1.68,-.215,.055,.055,.025);part(avatar,eyeMat,.1,1.68,-.215,.055,.055,.025);
+avatar.visible=true;
+function makeMob(kind,x,y,z){
+  var g=new THREE.Group();g.position.set(x,y,z);g.userData={kind:kind,hp:kind==='dragon'?60:kind==='spider'?12:20,phase:Math.random()*6.28,attack:0,baseY:y};
+  var body=kind==='spider'?darkMat:(kind==='skeleton'?new THREE.MeshBasicMaterial({color:0xd7d4c8}):(kind==='dragon'?new THREE.MeshBasicMaterial({color:0x6d3db3}):redMat));
+  if(kind==='spider'){
+    part(g,body,0,.35,0,.8,.35,.9);
+    part(g,darkMat,0,.48,-.48,.46,.32,.35);
+    for(var a=0;a<8;a++){var side=a<4?-1:1,step=a%4;var leg=part(g,darkMat,side*(.38+step*.025),.22,(step-1.5)*.3,.65,.09,.1);leg.rotation.z=side*.42}
+    part(g,eyeMat,-.12,.52,-.66,.08,.08,.035);part(g,eyeMat,.12,.52,-.66,.08,.08,.035);
+  }else if(kind==='dragon'){
+    part(g,body,0,.45,0,1.3,.65,2.1);part(g,body,0,.55,-1.15,.55,.48,.8);
+    part(g,new THREE.MeshBasicMaterial({color:0xe0a5ff}),-.16,.65,-1.52,.07,.07,.04);part(g,new THREE.MeshBasicMaterial({color:0xe0a5ff}),.16,.65,-1.52,.07,.07,.04);
+    var wingL=part(g,body,-.95,.58,-.05,1.35,.12,1.15),wingR=part(g,body,.95,.58,-.05,1.35,.12,1.15);wingL.rotation.z=-.25;wingR.rotation.z=.25;
+    part(g,body,0,.3,1.35,.32,.28,1.25);
+  }else{
+    part(g,body,0,.95,0,.65,.8,.38);part(g,kind==='skeleton'?darkMat:body,0,1.55,0,.48,.48,.4);
+    part(g,eyeMat,-.12,1.62,-.21,.07,.07,.025);part(g,eyeMat,.12,1.62,-.21,.07,.07,.025);
+    if(kind==='skeleton'){part(g,darkMat,.4,1.15,-.05,.12,.7,.12);part(g,new THREE.MeshBasicMaterial({color:0x8c7048}),.42,1.1,-.1,.08,.8,.08)}
+  }
+  scene.add(g);mobs.push(g);return g;
+}
+function clearMobs(){mobs.forEach(function(m){scene.remove(m);m.traverse(function(o){if(o.geometry)o.geometry.dispose()})});mobs=[];if(blackHole){scene.remove(blackHole.group);blackHole=null}}
+function spawnMobs(){
+  clearMobs();
+  var types=['zombie','spider','skeleton','zombie','spider'];
+  for(var i=0;i<types.length;i++){
+    var a=i*1.256+Math.random()*.4,r=8+Math.random()*7,x=Math.max(2,Math.min(W-2,p.x+Math.cos(a)*r)),z=Math.max(2,Math.min(D-2,p.z+Math.sin(a)*r));
+    var yy=findSpawnAt(x,z);makeMob(types[i],x,yy,z);
+  }
+  var dx=Math.max(5,Math.min(W-5,p.x+12)),dz=Math.max(5,Math.min(D-5,p.z+8));
+  makeMob('dragon',dx,p.y+6,dz);
+  toast('Monsters and dragon have spawned!',1800);
+}
+function findSpawnAt(x,z){for(var y=H-1;y>=0;y--)if(raw(Math.floor(x),y,Math.floor(z)))return y+1;return Math.max(2,p.y)}
+function addEffect(mesh,duration,updateFn){scene.add(mesh);effects.push({mesh:mesh,life:duration,max:duration,update:updateFn||null})}
+function useGravity(){
+  if(blackHole){scene.remove(blackHole.group);blackHole=null}
+  var g=new THREE.Group();g.position.set(p.x-Math.sin(yaw)*2,p.y+1.2,p.z-Math.cos(yaw)*2);
+  var core=new THREE.Mesh(new THREE.SphereGeometry(.42,12,8),new THREE.MeshBasicMaterial({color:0x05000d}));
+  var ring=new THREE.Mesh(new THREE.TorusGeometry(.78,.075,6,24),new THREE.MeshBasicMaterial({color:0xb34cff}));
+  var ring2=new THREE.Mesh(new THREE.TorusGeometry(.98,.035,5,24),new THREE.MeshBasicMaterial({color:0x5ee7ff}));ring.rotation.x=.7;ring2.rotation.y=.9;g.add(core,ring,ring2);scene.add(g);blackHole={group:g,life:7,core:core,ring:ring,ring2:ring2};
+  toast('Black hole active — pulls nearby monsters!',1500);
+}
+function useLightning(){
+  var best=null,bd=1e9;
+  mobs.forEach(function(m){var d=m.position.distanceTo(new THREE.Vector3(p.x,p.y,p.z));if(d<bd){bd=d;best=m}});
+  if(best&&bd<18){best.userData.hp-=18;best.position.y+=.4;best.position.x+=(best.position.x-p.x)*.22;best.position.z+=(best.position.z-p.z)*.22;var points=[new THREE.Vector3(best.position.x,Math.min(H-1,best.position.y+6),best.position.z),new THREE.Vector3(best.position.x,best.position.y+.5,best.position.z)];var geo=new THREE.BufferGeometry().setFromPoints(points);addEffect(new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x75dfff})),.25);toast('Lightning strike!',700)}else toast('No enemy in range',700);
+}
+function useFire(){
+  var dir=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)),origin=new THREE.Vector3(p.x,p.y+1.2,p.z);
+  var orb=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),new THREE.MeshBasicMaterial({color:0xff6b22}));
+  orb.position.copy(origin);addEffect(orb,.8,function(e,dt){e.mesh.position.addScaledVector(dir,dt*13);mobs.forEach(function(m){if(m.position.distanceTo(e.mesh.position)<1.7)m.userData.hp-=dt*28})});
+  toast('Fireball launched!',700);
+}
+function useIce(){shieldTime=5;var sh=new THREE.Mesh(new THREE.SphereGeometry(1.35,10,8),new THREE.MeshBasicMaterial({color:0x64dcff,wireframe:true,transparent:true,opacity:.42}));addEffect(sh,5,function(e){e.mesh.position.set(p.x,p.y+1,p.z)});toast('Ice shield: 5 seconds',900)}
+function bindAdventureButtons(){
+  var v=$('#viewToggle'),r=$('#rotateToggle');
+  v.addEventListener('click',function(){thirdPerson=!thirdPerson;v.textContent=thirdPerson?'🎥 Third Person: ON':'👁️ First Person: ON';v.classList.toggle('on',thirdPerson);avatar.visible=thirdPerson;toast(thirdPerson?'Third-person camera':'First-person camera',800)});
+  r.addEventListener('click',function(){autoRotate=!autoRotate;r.textContent=autoRotate?'🔄 Auto-Rotate: ON':'🔄 Auto-Rotate: OFF';r.classList.toggle('on',autoRotate);toast(autoRotate?'Auto-rotate enabled':'Auto-rotate disabled',800)});
+  $('#powerGravity').addEventListener('click',useGravity);$('#powerLightning').addEventListener('click',useLightning);$('#powerFire').addEventListener('click',useFire);$('#powerIce').addEventListener('click',useIce);
+}
+bindAdventureButtons();
+function updateAdventure(dt){
+  if(!started||paused)return;
+  if(autoRotate)yaw+=dt*.42;
+  avatar.position.set(p.x,p.y,p.z);avatar.rotation.y=yaw;
+  avatarArmL.rotation.x=Math.sin(performance.now()*.006)*.12;avatarArmR.rotation.x=-avatarArmL.rotation.x;
+  spawnClock+=dt;
+  if(mobs.length<5&&spawnClock>12){spawnClock=0;var a=Math.random()*6.283,r=7+Math.random()*7;makeMob(Math.random()<.5?'zombie':'spider',Math.max(2,Math.min(W-2,p.x+Math.cos(a)*r)),findSpawnAt(p.x+Math.cos(a)*r,p.z+Math.sin(a)*r),Math.max(2,Math.min(D-2,p.z+Math.sin(a)*r)))}
+  mobs.forEach(function(m){
+    var u=m.userData,dx=p.x-m.position.x,dz=p.z-m.position.z,d=Math.hypot(dx,dz);
+    u.phase+=dt*3;u.attack=Math.max(0,u.attack-dt);
+    if(u.kind==='dragon'){
+      m.position.y=u.baseY+Math.sin(u.phase*.65)*1.25;
+      m.position.x+=Math.sin(u.phase*.35)*dt*.8;m.position.z+=Math.cos(u.phase*.31)*dt*.8;
+      m.rotation.y=Math.atan2(-dx,-dz);
+      dragonClock+=dt;
+      if(mode==='survival'&&d<5&&u.attack<=0&&shieldTime<=0){hurt(2);u.attack=2.2}
+    }else if(d>1.35&&d<26){
+      var speed=u.kind==='spider'?2.1:1.15;m.position.x+=dx/(d||1)*speed*dt;m.position.z+=dz/(d||1)*speed*dt;m.rotation.y=Math.atan2(-dx,-dz);
+      if(u.kind==='spider')m.position.y=u.baseY+Math.max(0,Math.sin(u.phase*1.5))*.45;
+      if(mode==='survival'&&d<1.45&&u.attack<=0&&shieldTime<=0){hurt(u.kind==='spider'?2:1);u.attack=1.25}
+    }
+  });
+  if(blackHole){
+    blackHole.life-=dt;blackHole.group.rotation.y+=dt*2.5;blackHole.ring.rotation.z+=dt*1.7;blackHole.ring2.rotation.x+=dt*1.3;
+    mobs.forEach(function(m){var d=m.position.distanceTo(blackHole.group.position);if(d<9&&d>.35){var pull=(1-d/9)*dt*5;m.position.x+=(blackHole.group.position.x-m.position.x)*pull;m.position.z+=(blackHole.group.position.z-m.position.z)*pull;m.userData.hp-=dt*(d<1.2?16:0)}});
+    if(blackHole.life<=0){scene.remove(blackHole.group);blackHole=null}
+  }
+  for(var i=effects.length-1;i>=0;i--){var e=effects[i];e.life-=dt;if(e.update)e.update(e,dt);if(e.life<=0){scene.remove(e.mesh);if(e.mesh.geometry)e.mesh.geometry.dispose();effects.splice(i,1)}}
+  for(var j=mobs.length-1;j>=0;j--){if(mobs[j].userData.hp<=0){var dead=mobs[j];scene.remove(dead);dead.traverse(function(o){if(o.geometry)o.geometry.dispose()});mobs.splice(j,1);toast('Enemy defeated!',650)}}
+}
+
 function update(dt){
   var running=started&&!paused;
   if(running){
+    updateAdventure(dt);
     var fly=flying&&mode==='creative';
     var feetW=raw(Math.floor(p.x),Math.floor(p.y+.4),Math.floor(p.z))===WATER;
     var mx=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joy.x;
@@ -1040,8 +1159,15 @@ function update(dt){
   }else if(!started){
     yaw+=dt*.09;
   }
-  camera.position.set(p.x,p.y+EYE,p.z);
-  camera.rotation.set(pitch,yaw,0);
+  if(thirdPerson){
+    var back=camDistance,cy=Math.cos(yaw),sy=Math.sin(yaw);
+    var desired=new THREE.Vector3(p.x+sy*back,p.y+camHeight+Math.max(0,pitch)*1.2,p.z+cy*back);
+    camera.position.lerp(desired,.22);
+    camera.lookAt(p.x,p.y+1.05,p.z);
+  }else{
+    camera.position.set(p.x,p.y+EYE,p.z);
+    camera.rotation.set(pitch,yaw,0);
+  }
   var hw=raw(Math.floor(camera.position.x),Math.floor(camera.position.y),Math.floor(camera.position.z))===WATER;
   if(hw!==underwater){underwater=hw;waterEl.hidden=!hw}
   updateSky();
@@ -1071,7 +1197,7 @@ document.addEventListener('visibilitychange',function(){if(document.hidden){save
 window.addEventListener('pagehide',function(){saveWorld(true)});
 
 /* boot: a default island sits behind the title menu */
-SEED=20261025;generate();buildAll();startInv();spawn();setMode('creative');select(1);
+SEED=20261025;generate();buildAll();startInv();spawn();setMode('creative');select(1);spawnMobs();
 drawMiniBase();miniDirty=false;
 paused=false;openMenu();
 requestAnimationFrame(frame);

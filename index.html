@@ -966,6 +966,24 @@ function hold(el,fn,repeat){
 }
 hold($('#bBreak'),function(){if(!paused)act(0)},true);
 hold($('#bPlace'),function(){if(!paused)act(2)},true);
+
+/* Desktop: left click breaks the block under the aim; right click places.
+   Ignore HUD/touch controls and avoid treating camera drags as taps. */
+var canvasTap=null;
+canvas.addEventListener('pointerdown',function(e){
+  if(paused||!started||e.button!==0||e.pointerType==='touch'||e.target!==canvas)return;
+  canvasTap={x:e.clientX,y:e.clientY,id:e.pointerId};
+});
+canvas.addEventListener('pointerup',function(e){
+  if(!canvasTap||canvasTap.id!==e.pointerId)return;
+  var dx=e.clientX-canvasTap.x,dy=e.clientY-canvasTap.y;
+  canvasTap=null;
+  if(!paused&&started&&dx*dx+dy*dy<64)act(0);
+});
+canvas.addEventListener('pointercancel',function(){canvasTap=null});
+canvas.addEventListener('contextmenu',function(e){
+  if(e.target===canvas){e.preventDefault();if(!paused&&started)act(2)}
+});
 function heldBtn(el,set){
   el.addEventListener('pointerdown',function(e){e.preventDefault();set(true)});
   ['pointerup','pointercancel','pointerleave'].forEach(function(n){el.addEventListener(n,function(){set(false)})});

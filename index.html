@@ -245,7 +245,7 @@ body.touch .only-desktop{display:none}
 
 <div id="adventure-tools" aria-label="Adventure controls">
   <button id="viewToggle" type="button" class="on">🎥 Third Person: ON</button>
-  <button id="rotateToggle" type="button">🔄 Auto-Rotate: OFF</button>
+  <button id="rotateToggle" type="button" class="on">🔄 Auto-Rotate: ON</button>
   <div class="power-label">SUPERPOWERS</div>
   <div class="powers">
     <button id="powerGravity" type="button">🕳️ Gravity</button>
@@ -1008,7 +1008,7 @@ function hurt(n){
 }
 
 /* ---------- adventure entities, powers, and third-person camera ---------- */
-var thirdPerson=true,autoRotate=false,camDistance=5.2,camHeight=2.25;
+var thirdPerson=true,autoRotate=true,camDistance=5.2,camHeight=2.25;
 var mobs=[],effects=[],blackHole=null,shieldTime=0,spawnClock=0,dragonClock=0;
 var avatar=new THREE.Group();scene.add(avatar);
 var skinMat=new THREE.MeshBasicMaterial({color:0xe3b28b}),shirtMat=new THREE.MeshBasicMaterial({color:0x3985d4}),pantsMat=new THREE.MeshBasicMaterial({color:0x273a68}),darkMat=new THREE.MeshBasicMaterial({color:0x20232b}),eyeMat=new THREE.MeshBasicMaterial({color:0xffffff}),redMat=new THREE.MeshBasicMaterial({color:0x69c94b});

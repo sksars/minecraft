@@ -147,6 +147,7 @@ body.touch #touch{display:block}
   color:#fff;font:700 13px var(--display);letter-spacing:.06em;text-transform:uppercase;
 }
 .sb.on{border-color:var(--accent);color:var(--accent)}
+#bAuto{max-width:154px;padding:0 9px;font-size:11px}
 .sb[hidden]{display:none}
 
 /* menu */
@@ -218,6 +219,7 @@ body.touch .only-desktop{display:none}
   <div id="miniwrap"><canvas id="mini" width="224" height="224"></canvas><div id="mapcap"><b>Sumit (SK SARS)</b><a href="https://www.instagram.com/its_sk_sars/" target="_blank" rel="noopener">@its_sk_sars</a></div></div>
   <div id="topbtns">
     <button class="sb" id="bFly" type="button" hidden>Fly</button>
+    <button class="sb" id="bAuto" type="button" aria-pressed="false">Auto Rotate: Off</button>
     <button class="sb" id="bMenu" type="button">Menu</button>
   </div>
   <div id="bar">
@@ -648,6 +650,13 @@ function avatarBox(parent,w,h,d,mat,x,y,z){var mesh=new THREE.Mesh(new THREE.Box
 avatarBox(avatar,.62,.72,.34,shirtMat,0,1.16,0);
 avatarBox(avatar,.43,.43,.43,skinMat,0,1.76,0);
 avatarBox(avatar,.45,.14,.45,hairMat,0,1.99,0);
+/* Face details on the front (-Z) side, so the player is visibly facing forward. */
+var eyeMat=new THREE.MeshBasicMaterial({color:0x18202a}),shineMat=new THREE.MeshBasicMaterial({color:0xffffff});
+avatarBox(avatar,.085,.085,.025,eyeMat,-.105,1.79,-.224);
+avatarBox(avatar,.085,.085,.025,eyeMat,.105,1.79,-.224);
+avatarBox(avatar,.025,.025,.012,shineMat,-.12,1.81,-.24);
+avatarBox(avatar,.025,.025,.012,shineMat,.09,1.81,-.24);
+avatarBox(avatar,.075,.09,.045,skinMat,0,1.69,-.245);
 var legL=new THREE.Group(),legR=new THREE.Group(),armL=new THREE.Group(),armR=new THREE.Group();
 legL.position.set(-.18,.82,0);legR.position.set(.18,.82,0);armL.position.set(-.4,1.43,0);armR.position.set(.4,1.43,0);
 avatar.add(legL,legR,armL,armR);
@@ -655,7 +664,7 @@ avatarBox(legL,.25,.78,.27,pantsMat,0,-.39,0);avatarBox(legL,.27,.18,.38,shoeMat
 avatarBox(legR,.25,.78,.27,pantsMat,0,-.39,0);avatarBox(legR,.27,.18,.38,shoeMat,0,-.82,-.04);
 avatarBox(armL,.22,.72,.24,shirtMat,0,-.34,0);avatarBox(armL,.24,.2,.25,skinMat,0,-.76,0);
 avatarBox(armR,.22,.72,.24,shirtMat,0,-.34,0);avatarBox(armR,.24,.2,.25,skinMat,0,-.76,0);
-var avatarClock=0,avatarFacing=0;
+var avatarClock=0,avatarFacing=0,autoRotate=false,autoAngle=0;
 function findSpawn(){
   var cx=W/2,cz=D/2;
   for(var r=0;r<30;r++)for(var dx=-r;dx<=r;dx++)for(var dz=-r;dz<=r;dz++){
@@ -822,6 +831,13 @@ $('#bSave').addEventListener('click',function(){saveWorld(false)});
 $('#bNew').addEventListener('click',function(){newWorld();closeMenu();toast('New world')});
 $('#bMenu').addEventListener('click',openMenu);
 $('#bFly').addEventListener('click',toggleFly);
+$('#bAuto').addEventListener('click',function(){
+  autoRotate=!autoRotate;
+  $('#bAuto').classList.toggle('on',autoRotate);
+  $('#bAuto').textContent=autoRotate?'Auto Rotate: On':'Auto Rotate: Off';
+  $('#bAuto').setAttribute('aria-pressed',String(autoRotate));
+  toast(autoRotate?'Camera auto-rotate on':'Camera auto-rotate off',1200);
+});
 document.querySelectorAll('input[name=mode]').forEach(function(r){
   r.addEventListener('change',function(){if(r.checked){setMode(r.value);if(started&&!paused){}}});
 });
@@ -1055,10 +1071,12 @@ function update(dt){
   }else if(!started){
     yaw+=dt*.09;
   }
-  /* Third-person follow camera, kept behind the avatar and aimed forward. */
+  /* Third-person follow camera. Auto-rotate orbits the camera only; movement and avatar facing stay independent. */
+  if(running&&autoRotate)autoAngle+=dt*.42;
+  var cameraYaw=yaw+autoAngle;
   var back=5.2,camHeight=2.7;
-  camera.position.set(p.x+Math.sin(yaw)*back,p.y+camHeight+Math.max(0,pitch)*1.4,p.z+Math.cos(yaw)*back);
-  camera.lookAt(p.x-Math.sin(yaw)*3,p.y+1.15-pitch*2,p.z-Math.cos(yaw)*3);
+  camera.position.set(p.x+Math.sin(cameraYaw)*back,p.y+camHeight+Math.max(0,pitch)*1.4,p.z+Math.cos(cameraYaw)*back);
+  camera.lookAt(p.x-Math.sin(cameraYaw)*3,p.y+1.15-pitch*2,p.z-Math.cos(cameraYaw)*3);
   avatar.position.set(p.x,p.y,p.z);
   var mxFace=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joy.x;
   var mzFace=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)+joy.y;

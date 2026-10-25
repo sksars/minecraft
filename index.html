@@ -492,11 +492,15 @@ var camera=new THREE.PerspectiveCamera(S.fov,1,.05,260);
 camera.rotation.order='YXZ';
 scene.add(camera);
 function resize(){
-  var w=window.innerWidth,h=window.innerHeight;
+  var w=Math.max(1,window.innerWidth||document.documentElement.clientWidth);
+  var h=Math.max(1,window.innerHeight||document.documentElement.clientHeight);
   renderer.setSize(w,h,false);
   camera.aspect=w/h;camera.updateProjectionMatrix();
 }
-window.addEventListener('resize',resize);resize();
+window.addEventListener('resize',resize,{passive:true});
+window.addEventListener('orientationchange',function(){setTimeout(resize,80);setTimeout(resize,300);},{passive:true});
+if(window.visualViewport)window.visualViewport.addEventListener('resize',resize,{passive:true});
+resize();
 
 var mat=new THREE.MeshBasicMaterial({map:tex,vertexColors:true});
 var wmat=new THREE.MeshBasicMaterial({map:tex,vertexColors:true,transparent:true,opacity:.62,depthWrite:false,side:THREE.DoubleSide});
@@ -1123,37 +1127,11 @@ requestAnimationFrame(frame);
 </script>
 
 <script>
-(function(){
- var landscapeRequested=false;
- function tryLandscape(){
-  if(landscapeRequested)return;
-  landscapeRequested=true;
-  var root=document.documentElement;
-  function lockOrientation(){
-   try{
-    if(screen.orientation && screen.orientation.lock){
-     var lock=screen.orientation.lock('landscape');
-     if(lock&&lock.catch)lock.catch(function(){});
-    }
-   }catch(e){}
-  }
-  /* Android browsers generally allow orientation lock only after a user gesture
-     and, in many cases, after entering fullscreen. */
-  try{
-   if(!document.fullscreenElement && root.requestFullscreen){
-    var fs=root.requestFullscreen();
-    if(fs&&fs.then)fs.then(lockOrientation).catch(function(){lockOrientation()});
-    else lockOrientation();
-   }else lockOrientation();
-  }catch(e){lockOrientation()}
- }
- document.addEventListener('pointerdown',tryLandscape);
- document.addEventListener('touchstart',tryLandscape,{passive:true});
- window.addEventListener('orientationchange',function(){
-  try{if(screen.orientation&&screen.orientation.type&&screen.orientation.type.indexOf('landscape')===0)return;}catch(e){}
-  /* Re-attempt when the browser permits it; never block gameplay if denied. */
-  landscapeRequested=false;
- });
-})();
+/* Do not force landscape or fullscreen: let the device rotate naturally.
+   The game renderer resizes for portrait and landscape viewports. */
+window.addEventListener('orientationchange',function(){
+ setTimeout(function(){window.dispatchEvent(new Event('resize'));},80);
+ setTimeout(function(){window.dispatchEvent(new Event('resize'));},300);
+},{passive:true});
 </script>
 </body></html>

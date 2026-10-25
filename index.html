@@ -66,7 +66,7 @@ input[type=text]{user-select:text;-webkit-user-select:text}
 #hurt.on{opacity:1;transition:none}
 #look{position:fixed;inset:0;z-index:1;touch-action:none}
 #hud{position:fixed;inset:0;z-index:2;pointer-events:none}
-.cross{position:absolute;left:40%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%);mix-blend-mode:difference;pointer-events:none}
+.cross{position:absolute;left:60%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%);mix-blend-mode:difference;pointer-events:none}
 .cross::before,.cross::after{content:"";position:absolute;background:#fff}
 .cross::before{left:10px;top:3px;width:2px;height:16px}
 .cross::after{top:10px;left:3px;height:2px;width:16px}
@@ -890,7 +890,7 @@ document.addEventListener('mousemove',function(e){
   if(!locked||paused)return;
   var k=.0024*S.sens/100;
   yaw-=e.movementX*k;
-  pitch=Math.max(-1.55,Math.min(1.55,pitch-e.movementY*k));
+  pitch=Math.max(-0.9,Math.min(0.9,pitch-e.movementY*k));
 });
 
 var look=$('#look'),drag=null,tl=null;
@@ -915,7 +915,7 @@ look.addEventListener('pointermove',function(e){
   if(s===drag)s.moved+=Math.abs(dx)+Math.abs(dy);
   if(locked||paused)return;
   k*=S.sens/100;
-  yaw-=dx*k;pitch=Math.max(-1.55,Math.min(1.55,pitch-dy*k));
+  yaw-=dx*k;pitch=Math.max(-0.9,Math.min(0.9,pitch-dy*k));
 });
 function endLook(e){
   if(drag&&drag.id===e.pointerId){
@@ -1063,10 +1063,13 @@ function update(dt){
   }else if(!started){
     yaw+=dt*.09;
   }
-  /* Third-person follow camera, kept behind the avatar and aimed forward. */
-  var back=5.2,camHeight=2.7;
-  camera.position.set(p.x+Math.sin(yaw)*back,p.y+camHeight+Math.max(0,pitch)*1.4,p.z+Math.cos(yaw)*back);
-  camera.lookAt(p.x-Math.sin(yaw)*3,p.y+1.15-pitch*2,p.z-Math.cos(yaw)*3);
+  /* Third-person orbit camera: orbit around a fixed avatar torso target so
+     vertical camera dragging changes the view angle without pushing the avatar
+     up/down in the frame. */
+  var back=5.2,camHeight=1.15,camTargetY=p.y+camHeight;
+  var flatBack=back*Math.cos(pitch);
+  camera.position.set(p.x+Math.sin(yaw)*flatBack,camTargetY-Math.sin(pitch)*back,p.z+Math.cos(yaw)*flatBack);
+  camera.lookAt(p.x,camTargetY,p.z);
   avatar.position.set(p.x,p.y,p.z);
   var mxFace=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joy.x;
   var mzFace=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)+joy.y;

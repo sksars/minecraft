@@ -1127,11 +1127,44 @@ requestAnimationFrame(frame);
 </script>
 
 <script>
-/* Do not force landscape or fullscreen: let the device rotate naturally.
-   The game renderer resizes for portrait and landscape viewports. */
-window.addEventListener('orientationchange',function(){
- setTimeout(function(){window.dispatchEvent(new Event('resize'));},80);
- setTimeout(function(){window.dispatchEvent(new Event('resize'));},300);
-},{passive:true});
+/* Grenny-style: request landscape automatically when the game is opened,
+   then retry after the first tap because mobile browsers may require a gesture. */
+(function(){
+ var requested=false;
+ function requestLandscape(){
+  if(requested)return;
+  requested=true;
+  function lock(){
+   try{
+    if(screen.orientation&&screen.orientation.lock){
+     var p=screen.orientation.lock('landscape');
+     if(p&&p.catch)p.catch(function(){requested=false;});
+    }else requested=false;
+   }catch(e){requested=false;}
+  }
+  try{
+   var root=document.documentElement;
+   if(!document.fullscreenElement&&root.requestFullscreen){
+    var f=root.requestFullscreen();
+    if(f&&f.then)f.then(lock).catch(function(){lock();});
+    else lock();
+   }else lock();
+  }catch(e){lock();}
+ }
+ /* Best effort at startup; most browsers defer permission until the first tap. */
+ try{
+  if(screen.orientation&&screen.orientation.lock){
+   var first=screen.orientation.lock('landscape');
+   if(first&&first.catch)first.catch(function(){});
+  }
+ }catch(e){}
+ document.addEventListener('pointerdown',requestLandscape,{passive:true});
+ document.addEventListener('touchstart',requestLandscape,{passive:true});
+ window.addEventListener('orientationchange',function(){
+  requested=false;
+  setTimeout(function(){window.dispatchEvent(new Event('resize'));},80);
+  setTimeout(function(){window.dispatchEvent(new Event('resize'));},300);
+ },{passive:true});
+})();
 </script>
 </body></html>

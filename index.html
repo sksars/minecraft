@@ -97,9 +97,9 @@ body.touch #bar{bottom:auto;top:calc(10px + env(safe-area-inset-top,0px));flex-d
 body.touch #pos{top:auto;bottom:calc(170px + env(safe-area-inset-bottom,0px))}
 #miniwrap{
   position:absolute;right:max(0px,env(safe-area-inset-right,0px));top:calc(10px + env(safe-area-inset-top,0px));
-  width:min(190px,42vw);border:2px solid var(--line);background:var(--panel);
+  width:min(224px,48vw);border:2px solid var(--line);background:var(--panel);
 }
-body.touch #miniwrap{right:auto;left:max(0px,env(safe-area-inset-left,0px));top:calc(104px + env(safe-area-inset-top,0px));width:132px}
+body.touch #miniwrap{right:auto;left:max(0px,env(safe-area-inset-left,0px));top:calc(104px + env(safe-area-inset-top,0px));width:164px}
 #miniwrap[hidden]{display:none}
 #mini{width:100%;aspect-ratio:1;display:block;image-rendering:pixelated}
 #mapcap{padding:4px 6px 5px;border-top:1px solid var(--line);font:500 11px/1.35 var(--display);letter-spacing:.04em;color:var(--muted);text-align:center}
@@ -215,7 +215,7 @@ body.touch .only-desktop{display:none}
 <div id="hud">
   <div class="cross"></div>
   <div id="pos"></div>
-  <div id="miniwrap"><canvas id="mini" width="192" height="192"></canvas><div id="mapcap"><b>Sumit (SK SARS)</b><a href="https://www.instagram.com/its_sk_sars/" target="_blank" rel="noopener">@its_sk_sars</a></div></div>
+  <div id="miniwrap"><canvas id="mini" width="224" height="224"></canvas><div id="mapcap"><b>Sumit (SK SARS)</b><a href="https://www.instagram.com/its_sk_sars/" target="_blank" rel="noopener">@its_sk_sars</a></div></div>
   <div id="topbtns">
     <button class="sb" id="bFly" type="button" hidden>Fly</button>
     <button class="sb" id="bMenu" type="button">Menu</button>
@@ -301,7 +301,7 @@ body.touch .only-desktop{display:none}
 <script>
 (function(){
 'use strict';
-var W=64,D=64,H=32,CS=16,WL=11,WATER=15,SAVE_KEY='cubeterra.save.v2',SET_KEY='cubeterra.settings';
+var W=96,D=96,H=32,CS=16,WL=11,WATER=15,SAVE_KEY='cubeterra.save.v2',SET_KEY='cubeterra.settings';
 var $=function(s){return document.querySelector(s)};
 var isTouch=('ontouchstart' in window)||(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
 if(isTouch)document.body.classList.add('touch');
@@ -627,13 +627,13 @@ function drawMiniBase(){
 }
 function drawMini(){
   mctx.imageSmoothingEnabled=false;
-  mctx.drawImage(mbase,0,0,192,192);
-  var px=p.x/W*192,pz=p.z/D*192,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=-fz,rz=fx;
+  mctx.drawImage(mbase,0,0,224,224);
+  var px=p.x/W*224,pz=p.z/D*224,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=-fz,rz=fx;
   mctx.fillStyle='#fff';mctx.strokeStyle='#000';mctx.lineWidth=1.5;
   mctx.beginPath();
-  mctx.moveTo(px+fx*12,pz+fz*12);
-  mctx.lineTo(px-fx*7+rx*7,pz-fz*7+rz*7);
-  mctx.lineTo(px-fx*7-rx*7,pz-fz*7-rz*7);
+  mctx.moveTo(px+fx*14,pz+fz*14);
+  mctx.lineTo(px-fx*8+rx*8,pz-fz*8+rz*8);
+  mctx.lineTo(px-fx*8-rx*8,pz-fz*8-rz*8);
   mctx.closePath();mctx.fill();mctx.stroke();
 }
 
@@ -641,6 +641,21 @@ function drawMini(){
 var HW=.3,PH=1.8,EYE=1.62;
 var p={x:W/2+.5,y:20,z:D/2+.5},vy=0,onGround=false,yaw=0,pitch=-.2,flying=false;
 var mode='creative',hp=20,hpAcc=0,inv=[],sel=1;
+/* Lightweight voxel avatar with animated limbs; built from boxes for mobile performance. */
+var avatar=new THREE.Group();scene.add(avatar);
+var skinMat=new THREE.MeshBasicMaterial({color:0xe4b28a}),shirtMat=new THREE.MeshBasicMaterial({color:0x2474d8}),pantsMat=new THREE.MeshBasicMaterial({color:0x26354e}),shoeMat=new THREE.MeshBasicMaterial({color:0x20242b}),hairMat=new THREE.MeshBasicMaterial({color:0x35251b});
+function avatarBox(parent,w,h,d,mat,x,y,z){var mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);mesh.position.set(x,y,z);parent.add(mesh);return mesh}
+avatarBox(avatar,.62,.72,.34,shirtMat,0,1.16,0);
+avatarBox(avatar,.43,.43,.43,skinMat,0,1.76,0);
+avatarBox(avatar,.45,.14,.45,hairMat,0,1.99,0);
+var legL=new THREE.Group(),legR=new THREE.Group(),armL=new THREE.Group(),armR=new THREE.Group();
+legL.position.set(-.18,.82,0);legR.position.set(.18,.82,0);armL.position.set(-.4,1.43,0);armR.position.set(.4,1.43,0);
+avatar.add(legL,legR,armL,armR);
+avatarBox(legL,.25,.78,.27,pantsMat,0,-.39,0);avatarBox(legL,.27,.18,.38,shoeMat,0,-.82,-.04);
+avatarBox(legR,.25,.78,.27,pantsMat,0,-.39,0);avatarBox(legR,.27,.18,.38,shoeMat,0,-.82,-.04);
+avatarBox(armL,.22,.72,.24,shirtMat,0,-.34,0);avatarBox(armL,.24,.2,.25,skinMat,0,-.76,0);
+avatarBox(armR,.22,.72,.24,shirtMat,0,-.34,0);avatarBox(armR,.24,.2,.25,skinMat,0,-.76,0);
+var avatarClock=0,avatarFacing=0;
 function findSpawn(){
   var cx=W/2,cz=D/2;
   for(var r=0;r<30;r++)for(var dx=-r;dx<=r;dx++)for(var dz=-r;dz<=r;dz++){
@@ -1040,8 +1055,26 @@ function update(dt){
   }else if(!started){
     yaw+=dt*.09;
   }
-  camera.position.set(p.x,p.y+EYE,p.z);
-  camera.rotation.set(pitch,yaw,0);
+  /* Third-person follow camera, kept behind the avatar and aimed forward. */
+  var back=5.2,camHeight=2.7;
+  camera.position.set(p.x+Math.sin(yaw)*back,p.y+camHeight+Math.max(0,pitch)*1.4,p.z+Math.cos(yaw)*back);
+  camera.lookAt(p.x-Math.sin(yaw)*3,p.y+1.15-pitch*2,p.z-Math.cos(yaw)*3);
+  avatar.position.set(p.x,p.y,p.z);
+  var mxFace=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joy.x;
+  var mzFace=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)+joy.y;
+  var moving=started&&!paused&&Math.hypot(mxFace,mzFace)>.12;
+  if(moving){
+    var snFace=Math.sin(yaw),csFace=Math.cos(yaw);
+    var vxFace=-snFace*mzFace+csFace*mxFace,vzFace=-csFace*mzFace-snFace*mxFace;
+    if(Math.hypot(vxFace,vzFace)>.08)avatarFacing=Math.atan2(-vxFace,-vzFace);
+  }
+  avatar.rotation.y=avatarFacing;
+  avatarClock+=dt*(moving?10:2.2);
+  var swing=moving?Math.sin(avatarClock)*.62:Math.sin(avatarClock)*.025;
+  legL.rotation.x=swing;legR.rotation.x=-swing;
+  armL.rotation.x=-swing*.75;armR.rotation.x=swing*.75;
+  if(!onGround&&!flying){legL.rotation.x=-.28;legR.rotation.x=.42;armL.rotation.x=-.65;armR.rotation.x=-.65;}
+  avatar.visible=started;
   var hw=raw(Math.floor(camera.position.x),Math.floor(camera.position.y),Math.floor(camera.position.z))===WATER;
   if(hw!==underwater){underwater=hw;waterEl.hidden=!hw}
   updateSky();

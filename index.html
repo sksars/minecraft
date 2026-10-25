@@ -1124,13 +1124,36 @@ requestAnimationFrame(frame);
 
 <script>
 (function(){
+ var landscapeRequested=false;
  function tryLandscape(){
-  try { if(screen.orientation && screen.orientation.lock) { var p=screen.orientation.lock('landscape'); if(p&&p.catch)p.catch(function(){}); } } catch(e) {}
-  document.removeEventListener('pointerdown',tryLandscape);
-  document.removeEventListener('touchstart',tryLandscape);
+  if(landscapeRequested)return;
+  landscapeRequested=true;
+  var root=document.documentElement;
+  function lockOrientation(){
+   try{
+    if(screen.orientation && screen.orientation.lock){
+     var lock=screen.orientation.lock('landscape');
+     if(lock&&lock.catch)lock.catch(function(){});
+    }
+   }catch(e){}
+  }
+  /* Android browsers generally allow orientation lock only after a user gesture
+     and, in many cases, after entering fullscreen. */
+  try{
+   if(!document.fullscreenElement && root.requestFullscreen){
+    var fs=root.requestFullscreen();
+    if(fs&&fs.then)fs.then(lockOrientation).catch(function(){lockOrientation()});
+    else lockOrientation();
+   }else lockOrientation();
+  }catch(e){lockOrientation()}
  }
- document.addEventListener('pointerdown',tryLandscape,{once:true});
- document.addEventListener('touchstart',tryLandscape,{once:true,passive:true});
+ document.addEventListener('pointerdown',tryLandscape);
+ document.addEventListener('touchstart',tryLandscape,{passive:true});
+ window.addEventListener('orientationchange',function(){
+  try{if(screen.orientation&&screen.orientation.type&&screen.orientation.type.indexOf('landscape')===0)return;}catch(e){}
+  /* Re-attempt when the browser permits it; never block gameplay if denied. */
+  landscapeRequested=false;
+ });
 })();
 </script>
 </body></html>

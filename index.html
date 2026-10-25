@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="screen-orientation" content="landscape"><meta name="x5-orientation" content="landscape"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
 /* Theme-matched SK SARS splash */
 #sksars-boot.theme-voxel{background:radial-gradient(ellipse at 50% 24%,#244b25 0%,#0c2115 56%,#06100b 100%)}
 #sksars-boot.theme-voxel .sk-card{border-color:#70e45b66;box-shadow:0 18px 70px #000b,0 0 36px #70e45b22}
@@ -8,6 +8,17 @@
 #sksars-boot .sk-developer{margin:-10px 0 24px;color:#8fa8c0;font-size:11px;letter-spacing:1px;text-transform:uppercase}
 #sksars-boot .sk-developer strong{color:#fff;font-size:12px;letter-spacing:.7px}
 
+
+/* Landscape-first mobile gameplay layout */
+html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
+@media (orientation:portrait) and (max-width:900px){
+  body.landscape-prompt #c{display:none}
+  #landscape-hint{display:flex}
+}
+#landscape-hint{display:none;position:fixed;inset:0;z-index:99999;background:#07130c;color:#fff;align-items:center;justify-content:center;text-align:center;padding:24px;font:700 18px system-ui}
+#landscape-hint .hint-card{max-width:320px}
+#landscape-hint .hint-icon{font-size:48px;margin-bottom:14px}
+#landscape-hint button{margin-top:16px;border:0;border-radius:12px;padding:12px 18px;font-weight:800;background:#8be35c;color:#10200c}
 </style><style id="sksars-boot-style">
 /* SK SARS branded boot/loading screen */
 #sksars-boot{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 25%,#17314b 0%,#080c16 55%,#03050a 100%);color:#f4f8ff;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;padding:24px;box-sizing:border-box;transition:opacity .35s ease;}
@@ -1118,4 +1129,15 @@ requestAnimationFrame(frame);
 })();
 </script>
 
+<div id="landscape-hint"><div class="hint-card"><div class="hint-icon">📱 ↻</div><div>LANDSCAPE MODE</div><p style="font-size:14px;font-weight:500;line-height:1.5">Phone ko horizontal ghumao aur Quick Settings se Auto-rotate ON karo.</p><button type="button" id="landscape-try">Try Landscape</button></div></div>
+<script>
+(function(){
+ var hint=document.getElementById('landscape-hint');
+ function sync(){document.body.classList.toggle('landscape-prompt',window.innerWidth<window.innerHeight&&window.innerWidth<900);}
+ function lock(){try{if(document.documentElement.requestFullscreen){var p=document.documentElement.requestFullscreen();if(p&&p.catch)p.catch(function(){});}}catch(e){}
+ try{if(screen.orientation&&screen.orientation.lock){var q=screen.orientation.lock('landscape');if(q&&q.catch)q.catch(function(){});}}catch(e){} }
+ var btn=document.getElementById('landscape-try');if(btn)btn.addEventListener('click',function(){lock();setTimeout(sync,250);});
+ window.addEventListener('resize',sync);window.addEventListener('orientationchange',sync);sync();
+})();
+</script>
 </body></html>

@@ -97,9 +97,9 @@ body.touch #bar{bottom:auto;top:calc(10px + env(safe-area-inset-top,0px));flex-d
 body.touch #pos{top:auto;bottom:calc(170px + env(safe-area-inset-bottom,0px))}
 #miniwrap{
   position:absolute;right:max(0px,env(safe-area-inset-right,0px));top:calc(10px + env(safe-area-inset-top,0px));
-  width:min(190px,42vw);border:2px solid var(--line);background:var(--panel);
+  width:min(220px,48vw);border:2px solid var(--line);background:var(--panel);
 }
-body.touch #miniwrap{right:auto;left:max(0px,env(safe-area-inset-left,0px));top:calc(104px + env(safe-area-inset-top,0px));width:132px}
+body.touch #miniwrap{right:auto;left:max(0px,env(safe-area-inset-left,0px));top:calc(104px + env(safe-area-inset-top,0px));width:176px}
 #miniwrap[hidden]{display:none}
 #mini{width:100%;aspect-ratio:1;display:block;image-rendering:pixelated}
 #mapcap{padding:4px 6px 5px;border-top:1px solid var(--line);font:500 11px/1.35 var(--display);letter-spacing:.04em;color:var(--muted);text-align:center}
@@ -879,7 +879,7 @@ document.addEventListener('pointerlockchange',function(){
 document.addEventListener('mousemove',function(e){
   if(!locked||paused)return;
   var k=.0024*S.sens/100;
-  yaw-=e.movementX*k;
+  camYaw-=e.movementX*k;
   pitch=Math.max(-1.55,Math.min(1.55,pitch-e.movementY*k));
 });
 
@@ -905,7 +905,7 @@ look.addEventListener('pointermove',function(e){
   if(s===drag)s.moved+=Math.abs(dx)+Math.abs(dy);
   if(locked||paused)return;
   k*=S.sens/100;
-  yaw-=dx*k;pitch=Math.max(-1.55,Math.min(1.55,pitch-dy*k));
+  camYaw-=dx*k;pitch=Math.max(-1.55,Math.min(1.55,pitch-dy*k));
 });
 function endLook(e){
   if(drag&&drag.id===e.pointerId){
@@ -1008,7 +1008,7 @@ function hurt(n){
 }
 
 /* ---------- adventure entities, powers, and third-person camera ---------- */
-var thirdPerson=true,autoRotate=true,camDistance=5.2,camHeight=2.25;
+var thirdPerson=true,autoRotate=true,camDistance=5.2,camHeight=2.25,camYaw=0,walkPhase=0;
 var mobs=[],effects=[],blackHole=null,shieldTime=0,spawnClock=0,dragonClock=0;
 var avatar=new THREE.Group();scene.add(avatar);
 var skinMat=new THREE.MeshBasicMaterial({color:0xe3b28b}),shirtMat=new THREE.MeshBasicMaterial({color:0x3985d4}),pantsMat=new THREE.MeshBasicMaterial({color:0x273a68}),darkMat=new THREE.MeshBasicMaterial({color:0x20232b}),eyeMat=new THREE.MeshBasicMaterial({color:0xffffff}),redMat=new THREE.MeshBasicMaterial({color:0x69c94b});
@@ -1082,11 +1082,19 @@ function bindAdventureButtons(){
 bindAdventureButtons();
 function updateAdventure(dt){
   if(!started||paused)return;
-  if(autoRotate)yaw+=dt*.42;
-  avatar.position.set(p.x,p.y,p.z);avatar.rotation.y=yaw;
-  avatarArmL.rotation.x=Math.sin(performance.now()*.006)*.12;avatarArmR.rotation.x=-avatarArmL.rotation.x;
-  spawnClock+=dt;
-  if(mobs.length<5&&spawnClock>12){spawnClock=0;var a=Math.random()*6.283,r=7+Math.random()*7;makeMob(Math.random()<.5?'zombie':'spider',Math.max(2,Math.min(W-2,p.x+Math.cos(a)*r)),findSpawnAt(p.x+Math.cos(a)*r,p.z+Math.sin(a)*r),Math.max(2,Math.min(D-2,p.z+Math.sin(a)*r)))}
+  if(autoRotate)camYaw+=dt*.42;
+  avatar.position.set(p.x,p.y,p.z);
+  var moveX=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joy.x;
+  var moveZ=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)+joy.y;
+  var moving=Math.hypot(moveX,moveZ)>.12;
+  if(moving)yaw=camYaw+Math.atan2(moveX,moveZ);
+  avatar.rotation.y=yaw;
+  walkPhase+=dt*(moving?11:3);
+  var swing=moving?Math.sin(walkPhase)*.55:0;
+  avatarArmL.rotation.x=-swing;avatarArmR.rotation.x=swing;
+  avatarLegL.rotation.x=swing;avatarLegR.rotation.x=-swing;
+  avatar.position.y=p.y+(moving?Math.abs(Math.sin(walkPhase*2))*.045:0);
+  spawnClock=0;
   mobs.forEach(function(m){
     var u=m.userData,dx=p.x-m.position.x,dz=p.z-m.position.z,d=Math.hypot(dx,dz);
     u.phase+=dt*3;u.attack=Math.max(0,u.attack-dt);
@@ -1123,7 +1131,7 @@ function update(dt){
     var sprint=fly?(keys.ControlLeft||keys.ControlRight):(keys.ShiftLeft||keys.ShiftRight);
     var spd=fly?(sprint?15:9):(sprint?7:4.6);
     if(feetW&&!fly)spd*=.6;
-    var sn=Math.sin(yaw),cs=Math.cos(yaw);
+    var sn=Math.sin(camYaw),cs=Math.cos(camYaw);
     var vx=(-sn*mz+cs*mx)*spd,vz=(-cs*mz-sn*mx)*spd;
     var up=keys.Space||jumpHeld,down=keys.ShiftLeft||keys.ShiftRight||keys.KeyC||downHeld;
     if(fly){vy=up?8:(down?-8:0)}
@@ -1160,10 +1168,11 @@ function update(dt){
     yaw+=dt*.09;
   }
   if(thirdPerson){
-    var back=camDistance,cy=Math.cos(yaw),sy=Math.sin(yaw);
+    var back=camDistance,cy=Math.cos(camYaw),sy=Math.sin(camYaw);
     var desired=new THREE.Vector3(p.x+sy*back,p.y+camHeight+Math.max(0,pitch)*1.2,p.z+cy*back);
     camera.position.lerp(desired,.22);
-    camera.lookAt(p.x,p.y+1.05,p.z);
+    /* Shoulder camera keeps the player left of the centered aim point. */
+    camera.lookAt(p.x+Math.cos(camYaw)*1.15,p.y+1.05,p.z-Math.sin(camYaw)*1.15);
   }else{
     camera.position.set(p.x,p.y+EYE,p.z);
     camera.rotation.set(pitch,yaw,0);
@@ -1197,7 +1206,7 @@ document.addEventListener('visibilitychange',function(){if(document.hidden){save
 window.addEventListener('pagehide',function(){saveWorld(true)});
 
 /* boot: a default island sits behind the title menu */
-SEED=20261025;generate();buildAll();startInv();spawn();setMode('creative');select(1);spawnMobs();
+SEED=20261025;generate();buildAll();startInv();spawn();setMode('creative');select(1);clearMobs();
 drawMiniBase();miniDirty=false;
 paused=false;openMenu();
 requestAnimationFrame(frame);

@@ -1093,7 +1093,9 @@ function update(dt){
   var hw=raw(Math.floor(camera.position.x),Math.floor(camera.position.y),Math.floor(camera.position.z))===WATER;
   if(hw!==underwater){underwater=hw;waterEl.hidden=!hw}
   updateSky();
-  camera.getWorldDirection(dirV);
+  /* Aim ray follows the visible crosshair at 60% screen width, not screen center. */
+  camera.updateMatrixWorld();
+  dirV.set(.2,0,.5).unproject(camera).sub(camera.position).normalize();
   orgV.copy(camera.position);
   target=(started&&!paused)?raycast(orgV,dirV,6):null;
   if(target){hl.visible=true;hl.position.set(target.x+.5,target.y+.5,target.z+.5)}else hl.visible=false;
